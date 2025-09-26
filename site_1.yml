@@ -1,0 +1,85 @@
+---
+- hosts: all
+  become: true
+  pre_tasks:
+
+  - name: Update package cache (Fedora/RHEL)
+    tags: always
+    ansible.builtin.command: dnf makecache
+    when: ansible_distribution in ["Fedora", "CentOS", "RedHat"]
+    ignore_errors: true
+
+  - name: Install Fedora updates using command
+    tags: always
+    ansible.builtin.command: dnf upgrade -y
+    when: ansible_distribution in ["Fedora", "CentOS", "RedHat"]
+    ignore_errors: true
+
+  - name: Install Ubuntu updates
+    tags: always
+    ansible.builtin.apt:
+      upgrade: dist
+      update_cache: yes
+    when: ansible_distribution == "Ubuntu"
+
+
+
+
+- hosts: web_servers
+  become: true
+  tasks:
+
+  - name: Install Apache on Web Servers (Ubuntu/Debian)
+    tags: apache,ubuntu
+    ansible.builtin.apt:
+      name:
+        - apache2
+        - libapache2-mod-php
+      state: latest
+      update_cache: yes
+    when: ansible_distribution in ["Ubuntu", "Debian"]
+
+  - name: Install Apache on Web Servers (Fedora/RHEL)
+    tags: httpd,fedora
+    ansible.builtin.command: dnf install -y httpd php
+    when: ansible_distribution in ["Fedora", "CentOS", "RedHat"]
+
+  - name: Ensure Apache is running (Ubuntu)
+    tags: apache,ubuntu
+    ansible.builtin.service:
+      name: apache2
+      state: started
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Ensure Apache is running (Fedora)
+    tags: httpd,fedora
+    ansible.builtin.service:
+      name: httpd
+      state: started
+    when: ansible_distribution == "Fedora"
+
+  - name: Copy html files to Apache Web Servers
+    tags: apache,ubuntu
+    ansible.builtin.copy:
+      src: default_site.html
+      dest: /var/www/html/index.html
+      owner: root
+      group: root
+      mode: 0644
+
+- hosts: db_servers
+  tags: db,fedora
+  become: true
+  tasks:
+  - name: Install MariaDB package (Fedora/RHEL)
+    ansible.builtin.command: dnf install -y mariadb-server
+    when: ansible_distribution in ["Fedora", "CentOS", "RedHat"]
+    ignore_errors: true
+
+  - name: Install MariaDB package (Ubuntu/Debian)
+    ansible.builtin.apt:
+      name: mariadb-server
+      state: latest
+      update_cache: yes
+    when: ansible_distribution in ["Ubuntu", "Debian"]
+

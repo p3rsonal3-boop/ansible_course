@@ -1,0 +1,27 @@
+---
+- name: Install Web Server with Variables
+  hosts: all
+  become: true
+  vars:
+    packages:
+      Ubuntu:
+        - apache2
+        - libapache2-mod-php
+      Fedora:
+        - httpd
+        - php
+    service_name:
+      Ubuntu: apache2
+      Fedora: httpd
+
+  tasks:
+    - name: Install web server packages
+      ansible.builtin.package:
+        name: "{{ packages[ansible_distribution] }}"
+        state: latest
+
+    - name: Start web server
+      ansible.builtin.service:
+        name: "{{ service_name[ansible_distribution] }}"
+        state: started
+        enabled: yes
